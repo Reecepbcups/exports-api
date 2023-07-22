@@ -28,44 +28,37 @@ export enum FileByType {
   STAKING = "_staking.json",
 }
 
-const getLatestHeightFromCompressedFolder = (
+const getLatestHeightInfoFromCompressedFolder = (
   req: Request,
   res: Response,
   next: NextFunction
 ): Response => {
-  console.log("passou aqui");
+  const sorted_height_list = getAvailableHeightList();
+
+  return res.status(200).json({
+    latestHeight: sorted_height_list[0]?.toString(),
+  });
+};
+
+const getAvailableHeightList = (): number[] => {
   const height_list: number[] = [];
   fs.readdirSync(compressedRootPath).forEach((file: any) => {
     const height = file.substring(0, file.indexOf("."));
     const height_int = Number(height);
     height_list.push(height_int);
   });
-  console.log(height_list);
   const sorted_height_list = height_list.sort(function (a, b) {
     return b - a; // sort in descending order
   });
 
-  console.log(sorted_height_list[0]?.toString());
-
-  return res.status(200).json({
-    height: sorted_height_list[0]?.toString(),
-  });
+  return sorted_height_list;
 };
 
 const isFileDecompressed = (height: string): boolean => {
-  /* const typeFolderPath = getFolderByType(type);
-  if (!typeFolderPath) throw new Error("Type not recognised"); */
   const decompressedPath = decompressedRootPath;
   const file = fs.readdirSync(decompressedPath).find((fileName) => {
-    /*  const height_decompressed = fileName.substring(0, fileName.indexOf("."));
-    if (height_decompressed === undefined)
-      throw new Error("Error creating substring of decompressed file");
- */
-    //console.log(fileName === height);
-    //console.log(height);
     return fileName === height;
   });
-  // if (file === undefined) return false else return true;
 
   return file === undefined ? false : true;
 };
@@ -109,13 +102,6 @@ const decompressFile = (height: string) => {
       `tar -xJf ${
         compressedRootPath + height + compressedExtension
       } -C ${decompressedRootPath}`
-      /* (error) => {
-      if (error) {
-        console.error(`Error extracting the tar.xz file: ${error.message}`);
-      } else {
-        console.log("Successfully extracted the tar.xz file.");
-      }
-    } */
     );
   } catch (error) {
     console.log("output", error);
@@ -132,16 +118,15 @@ const getDecompressedJsonDataByHeightAndType = (
 
   // check if height file exists compressed
   const heightAvailable = isHeightAvailable(height);
-  //console.log("heightAvailable: ", heightAvailable);
+
   // check if height file exists decompressed
   const decompressedExists = isFileDecompressed(height);
-  //console.log("decompressing");
+
   // if not, decompress
   if (!decompressedExists && heightAvailable) {
     //console.log("decompressedExists: ", decompressedExists);
     const result = decompressFile(height);
   }
-  //console.log("decompressed... ");
   // return json data
   let data;
   try {
@@ -190,7 +175,6 @@ const getFilteredDataByAddress = (
   }
 
   return searchResult;
-  // search bank file for all addresses
 };
 
 const ifNullOrUndefinedDoNothing = (data: any, results: any[]) => {
@@ -212,18 +196,17 @@ const getDecompressedJsonDataByHeightTypeAndAddress = (
 
   // check if height file exists compressed
   const heightAvailable = isHeightAvailable(height);
-  //console.log("heightAvailable: ", heightAvailable);
+
   // check if height file exists decompressed
   const decompressedExists = isFileDecompressed(height);
-  //console.log("decompressing");
+
   // if not, decompress
   if (!decompressedExists && heightAvailable) {
-    //console.log("decompressedExists: ", decompressedExists);
-    const result = decompressFile(height);
+    decompressFile(height);
   }
-  //console.log("decompressed... ");
+
   // return json data
-  let data: string | undefined;
+  let data;
   try {
     data = getDecompressedJsonData(type, height);
     if (data === undefined)
@@ -243,24 +226,98 @@ const getDecompressedJsonDataByHeightTypeAndAddress = (
   });
 };
 
-/* const latestCompressed = getLatestHeightFromCompressedFolder();
-console.log(latestCompressed);
+const getLatestHeightDecompressedJsonDataByType = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Response => {
+  let type = req.params.type as Type;
 
-const decompressedExists = isFileDecompressed(latestCompressed);
-console.log(decompressedExists);
+  let latestHeight: string;
+  try {
+    const sorted_height_list = getAvailableHeightList();
+    latestHeight = sorted_height_list[0].toString();
+  } catch (error) {
+    return res.status(400).json({
+      message: "Error while getting latest height",
+    });
+  }
 
-if (decompressedExists) {
-  const jsonData = getDecompressedJsonData(Type.AUTH, latestCompressed);
-  console.log(jsonData);
-} */
+  const decompressedExists = isFileDecompressed(latestHeight);
 
-//decompressFile("6440000");
+  if (!decompressedExists) {
+    decompressFile(latestHeight);
+  }
+
+  let data;
+  try {
+    data = getDecompressedJsonData(type, latestHeight);
+    if (data === undefined)
+      return res.status(400).json({
+        message: "File not found",
+      });
+  } catch (error) {
+    return res.status(400).json({
+      message: "Error while getting uncompressed file",
+    });
+  }
+
+  return res.status(200).json({
+    data,
+  });
+};
+
+const getLatestHeightDecompressedJsonDataByTypeAndAddress = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  let type = req.params.type as Type;
+  let address = req.params.address;
+
+  let latestHeight: string;
+  try {
+    const sorted_height_list = getAvailableHeightList();
+    latestHeight = sorted_height_list[0].toString();
+  } catch (error) {
+    return res.status(400).json({
+      message: "Error while getting latest height",
+    });
+  }
+
+  // check if height file exists decompressed
+  const decompressedExists = isFileDecompressed(latestHeight);
+
+  // if not, decompress
+  if (!decompressedExists) {
+    decompressFile(latestHeight);
+  }
+
+  // return json data
+  let data;
+  try {
+    data = getDecompressedJsonData(type, latestHeight);
+    if (data === undefined)
+      return res.status(400).json({
+        message: "File not found",
+      });
+  } catch (error) {
+    return res.status(400).json({
+      message: "Error while getting uncompressed file",
+    });
+  }
+
+  const filteredData = getFilteredDataByAddress(data, type, address);
+
+  return res.status(200).json({
+    filteredData,
+  });
+};
 
 export default {
-  getLatestHeightFromCompressedFolder,
-  isFileDecompressed,
-  getDecompressedJsonData,
-  decompressFile,
+  getLatestHeightInfoFromCompressedFolder,
+  getLatestHeightDecompressedJsonDataByType,
+  getLatestHeightDecompressedJsonDataByTypeAndAddress,
   getDecompressedJsonDataByHeightAndType,
   getDecompressedJsonDataByHeightTypeAndAddress,
 };

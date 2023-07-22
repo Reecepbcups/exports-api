@@ -1,7 +1,6 @@
 import http from "http";
 import express, { Express } from "express";
 import morgan from "morgan";
-import controller, { Type } from "./controllers/data_handler";
 import routes from "./routes/data_handler";
 
 const router: Express = express();
@@ -47,17 +46,3 @@ const PORT: any = process.env.PORT ?? 6060;
 httpServer.listen(PORT, () =>
   console.log(`The server is running on port ${PORT}`)
 );
-
-/* const latestCompressed = controller.getLatestHeightFromCompressedFolder();
-console.log(latestCompressed);
-
-const decompressedExists = controller.isFileDecompressed(latestCompressed);
-console.log(decompressedExists);
-
-if (decompressedExists) {
-  const jsonData = controller.getDecompressedJsonData(
-    Type.AUTH,
-    latestCompressed
-  );
-  //console.log("passou aqui");
-} */
