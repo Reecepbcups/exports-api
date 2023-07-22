@@ -2,9 +2,11 @@ import fs from "fs";
 import { execSync } from "child_process";
 import { Request, Response, NextFunction } from "express";
 
-const compressedRootPath = "./export_assets_compressed/";
-const decompressedRootPath = "./export_assets_uncompressed/";
-const compressedExtension = ".tar.xz";
+const compressedRootPath =
+  process.env.COMPRESSED_ROOT_PATH ?? "./export_assets_compressed/";
+const decompressedRootPath =
+  process.env.DECOMPRESSED_ROOT_PATH ?? "./export_assets_uncompressed/";
+const COMPRESSED_EXTENSION = ".tar.xz";
 
 const getFileNameByType = (type: Type): string | undefined => {
   if (type === Type.AUTH) {
@@ -55,8 +57,7 @@ const getAvailableHeightList = (): number[] => {
 };
 
 const isFileDecompressed = (height: string): boolean => {
-  const decompressedPath = decompressedRootPath;
-  const file = fs.readdirSync(decompressedPath).find((fileName) => {
+  const file = fs.readdirSync(decompressedRootPath).find((fileName) => {
     return fileName === height;
   });
 
@@ -96,11 +97,11 @@ const getDecompressedJsonData = (type: Type, height: string): any => {
 };
 
 const decompressFile = (height: string) => {
-  console.log(compressedRootPath + height + compressedExtension);
+  console.log(compressedRootPath + height + COMPRESSED_EXTENSION);
   try {
     execSync(
       `tar -xJf ${
-        compressedRootPath + height + compressedExtension
+        compressedRootPath + height + COMPRESSED_EXTENSION
       } -C ${decompressedRootPath}`
     );
   } catch (error) {

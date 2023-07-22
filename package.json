@@ -4,7 +4,7 @@
   "description": "",
   "main": "source/server.ts",
   "scripts": {
-    "dev": "nodemon source/server.ts",
+    "dev": "nodemon -r dotenv/config source/server.ts",
     "build": "rm -rf build/ && prettier --write source/ && tsc"
   },
   "keywords": [],
@@ -15,14 +15,18 @@
     "@types/morgan": "^1.9.4",
     "express": "^4.18.2",
     "morgan": "^1.10.0",
-    "nodemon": "^3.0.1",
     "ts-node": "^10.9.1",
     "typescript": "^5.1.6"
   },
   "devDependencies": {
-    "tsconfig-paths": "^4.2.0"
+    "dotenv": "^16.3.1",
+    "tsconfig-paths": "^4.2.0",
+    "nodemon": "^3.0.1"
   },
   "nodemonConfig": {
-    "ignore": ["**/export_assets_uncompressed/**", "**/export_assets_compressed/**"]
+    "ignore": [
+      "**/export_assets_uncompressed/**",
+      "**/export_assets_compressed/**"
+    ]
   }
 }
