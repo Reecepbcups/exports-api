@@ -1,7 +1,7 @@
 import http from "http";
 import express, { Express } from "express";
 import morgan from "morgan";
-import routes from "./routes/data_handler";
+import routes from "./routes/routes";
 
 const router: Express = express();
 
@@ -19,7 +19,7 @@ router.use((req, res, next) => {
   // set the CORS headers
   res.header(
     "Access-Control-Allow-Headers",
-    "origin, X-Requested-With,Content-Type,Accept, Authorization"
+    "origin, X-Requested-With,Content-Type,Accept, Authorization",
   );
   // set the CORS method headers
   if (req.method === "OPTIONS") {
@@ -30,19 +30,35 @@ router.use((req, res, next) => {
 });
 
 /** Routes */
+
 router.use("/", routes);
 
-/** Error handling */
 router.use((req, res, next) => {
-  const error = new Error("not found");
-  return res.status(404).json({
-    message: error.message,
+  const urlStart = `${req.protocol}://${req.get("host")}`;
+
+  res.status(200).json({
+    routes: {
+      "All Heights": `/heights`,
+      "Valid Types": `/types`,
+      "Download Archive": `/download/:height`,
+    },
+    general: {
+      "Account Info": `/:height/auth`,
+      "All Stakers": `/:height/staking`,
+      Balances: `/:height/bank`,
+      Supply: `/:height/supply`,
+    },
+    specific: {
+      "Validators Shares": `/:height/validators`,
+      "Specific Delegations": `/:height/delegations/:valoper_address`,
+      "User Specific": `/:height/:type/:address`,
+    },
   });
 });
 
 /** Server */
-const httpServer = http.createServer(router);
 const PORT: any = process.env.PORT ?? 6060;
-httpServer.listen(PORT, () =>
-  console.log(`The server is running on port ${PORT}`)
-);
+
+router.listen(PORT, () => {
+  console.log(`The server is running on port ${PORT}`);
+});

@@ -1,11 +1,12 @@
 {
-  "name": "api_exports",
+  "name": "exports-api",
   "version": "1.0.0",
   "description": "",
   "main": "source/server.ts",
   "scripts": {
     "dev": "nodemon -r dotenv/config source/server.ts",
-    "build": "rm -rf build/ && prettier --write source/ && tsc"
+    "build": "rm -rf build/ && prettier --write source/ && tsc",
+    "fmt": "prettier --write source/ && tsc"
   },
   "keywords": [],
   "author": "",
@@ -13,6 +14,7 @@
   "dependencies": {
     "@types/express": "^4.17.17",
     "@types/morgan": "^1.9.4",
+    "decompress-tarxz": "^3.0.0",
     "express": "^4.18.2",
     "morgan": "^1.10.0",
     "ts-node": "^10.9.1",
@@ -20,8 +22,8 @@
   },
   "devDependencies": {
     "dotenv": "^16.3.1",
-    "tsconfig-paths": "^4.2.0",
-    "nodemon": "^3.0.1"
+    "nodemon": "^3.0.1",
+    "tsconfig-paths": "^4.2.0"
   },
   "nodemonConfig": {
     "ignore": [
