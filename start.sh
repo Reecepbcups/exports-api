@@ -8,3 +8,8 @@ cd /root/exports-api
 npm install -g nodemon
 
 screen -S exports-api -dm bash -c "npm i && npm run dev && exec bash"
+
+
+# sudo crontab -e
+# clear all exports nightly
+# 0 0 * * * rm -rf /root/decompressed_exports/*
