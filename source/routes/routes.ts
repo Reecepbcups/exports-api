@@ -2,20 +2,22 @@ import express from "express";
 import controller from "../controllers/handler";
 const router = express.Router();
 
-router.get("/heights", controller.avaliableHeights);
-router.get("/types", controller.avaliableTypes);
-router.get("/download/:height", controller.download);
+router.get("/chains", controller.availableChains);
 
-router.get("/:height/validators", controller.getValidators);
+router.get("/:chain/heights", controller.availableHeights);
+router.get("/:chain/types", controller.availableTypes);
+router.get("/:chain/download/:height", controller.download);
+
+router.get("/:chain/:height/validators", controller.getValidators);
 
 // /:height can also be /latest
 router.get(
-  "/:height/delegations/:valoper_address",
+  "/:chain/:height/delegations/:valoper_address",
   controller.getDelegationsTo,
 );
 
-router.get("/:height/:type", controller.getDataAtHeight);
+router.get("/:chain/:height/:type", controller.getDataAtHeight);
 
-router.get("/:height/:type/:address", controller.getUserAtHeight);
+router.get("/:chain/:height/:type/:address", controller.getUserAtHeight);
 
 export = router;

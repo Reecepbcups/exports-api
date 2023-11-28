@@ -20,24 +20,25 @@ router.use(cors());
 router.use("/", routes);
 
 router.use((req, res, next) => {
-  // const urlStart = `${req.protocol}://${req.get("host")}`;
-
   res.status(200).json({
+    chains: {
+      "Available": `/chains`,
+    },
     routes: {
-      "All Heights": `/heights`,
-      "Valid Types": `/types`,
-      "Download Archive": `/download/:height`,
+      "All Heights": `/:chain/heights`,
+      "Valid Types": `/:chain/types`,
+      "Download Archive": `/:chain/download/:height`,
     },
     general: {
-      "Account Info": `/:height/auth`,
-      "All Stakers": `/:height/staking`,
-      Balances: `/:height/bank`,
-      Supply: `/:height/supply`,
+      "Account Info": `/:chain/:height/auth`,
+      "All Stakers": `/:chain/:height/staking`,
+      Balances: `/:chain/:height/bank`,
+      Supply: `/:chain/:height/supply`,
     },
     specific: {
-      "Validators Shares": `/:height/validators`,
-      "Specific Delegations": `/:height/delegations/:valoper_address`,
-      "User Specific": `/:height/:type/:address`,
+      "Validators Shares": `/:chain/:height/validators`,
+      "Specific Delegations": `/:chain/:height/delegations/:valoper_address`,
+      "User Specific": `/:chain/:height/:type/:address`,
     },
   });
 });

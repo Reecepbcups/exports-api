@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { execSync } from "child_process";
+import { Response } from "express";
 
 export enum Type {
   AUTH = "auth",
@@ -39,20 +40,30 @@ const getFileNameByType = (type: Type): string | undefined => {
 // TODO: .
 const isFileDecompressed = (
   decompressedRootPath: string,
-  height: string, 
+  chain: string,
+  height: string,
 ): boolean => {
-  const decompressedPath = path.join(decompressedRootPath, height);
+  const decompressedPath = path.join(decompressedRootPath, chain, height);
   return fs.existsSync(decompressedPath);
 };
 
-const getSortedHeightsList = (compressedRootPath: string): number[] => {
+const getSortedHeightsList = (compressedRootPath: string, chain: string): number[] => {
   const height_list: number[] = [];
 
-  fs.readdirSync(compressedRootPath).forEach((file: any) => {
+  let p = path.join(compressedRootPath, chain)
+  if (!fs.existsSync(p)) {
+    return [];
+  }
+
+  fs.readdirSync(p).forEach((file: any) => {
     const height = file.substring(0, file.indexOf("."));
     const height_int = Number(height);
     height_list.push(height_int);
   });
+
+  if (height_list.length === 0) {
+    return [];
+  }
 
   // sort in descending order
   const sorted_height_list = height_list.sort(function (a, b) {
@@ -64,13 +75,17 @@ const getSortedHeightsList = (compressedRootPath: string): number[] => {
 
 const validateHeight = (
   compressedRootPath: string,
+  chain: string,
   height: string,
 ): string | undefined => {
   if (height === ":height") {
     return undefined;
   }
 
-  const heights: number[] = getSortedHeightsList(compressedRootPath);
+  const heights: number[] = getSortedHeightsList(compressedRootPath, chain);
+  if (heights.length === 0) {
+    return undefined;
+  }
 
   // Stars with:
   if (height === "l" || height === "latest") {
@@ -79,7 +94,7 @@ const validateHeight = (
 
   // earliest value
 
-  if (isNaN(Number(height))) {    
+  if (isNaN(Number(height))) {
     return heights[0].toString();
   }
 
@@ -89,17 +104,25 @@ const validateHeight = (
 const decompressFile = (
   compressedRootPath: string,
   compressed_ext: string,
+  chain: string,
   height: string,
   decompressedRootPath: string,
 ): boolean => {
-  const file = path.join(compressedRootPath, height + compressed_ext);
+  const file = path.join(compressedRootPath, chain, height + compressed_ext);
 
   // cache
-  if (isFileDecompressed(decompressedRootPath, height)) {
+  if (isFileDecompressed(decompressedRootPath, chain, height)) {
     return true;
   }
 
-  const decompressCommand = `tar -xzf ${file} -C ${decompressedRootPath}`;
+  let p = path.join(decompressedRootPath, chain)
+
+  // create path if it does not exist
+  if (!fs.existsSync(p)) {
+    fs.mkdirSync(p);
+  }
+
+  const decompressCommand = `tar -xzf ${file} -C ${p}`;
 
   try {
     execSync(decompressCommand);
@@ -111,12 +134,14 @@ const decompressFile = (
 };
 
 const getDataJSONAtHeight = (
+  chain: string,
   height: string,
   type: string,
   decompressedRootPath: string,
-): any => {  
+): any => {
   const filePath = path.join(
     decompressedRootPath,
+    chain,
     height,
     `${height}_${type}.json`,
   );
