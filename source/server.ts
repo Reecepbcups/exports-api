@@ -21,24 +21,26 @@ router.use("/", routes);
 
 router.use((req, res, next) => {
   res.status(200).json({
-    chains: {
-      "Available": `/chains`,
+    source: {
+      export_api: "https://github.com/Reecepbcups/exports-api",
+      state_exporter: "https://github.com/Reecepbcups/cosmos-state-exporter"
     },
     routes: {
-      "All Heights": `/:chain/heights`,
-      "Valid Types": `/:chain/types`,
-      "Download Archive": `/:chain/download/:height`,
+      chains: `/chains`,
+      heights: `/:chain/heights`,
+      types: `/:chain/types`,
+      download_archive: `/:chain/download/:height`,
     },
     general: {
-      "Account Info": `/:chain/:height/auth`,
-      "All Stakers": `/:chain/:height/staking`,
-      Balances: `/:chain/:height/bank`,
-      Supply: `/:chain/:height/supply`,
+      account_info: `/:chain/:height/auth`,
+      stakers: `/:chain/:height/staking`,
+      balances: `/:chain/:height/bank`,
+      supply: `/:chain/:height/supply`,
     },
     specific: {
-      "Validators Shares": `/:chain/:height/validators`,
-      "Specific Delegations": `/:chain/:height/delegations/:valoper_address`,
-      "User Specific": `/:chain/:height/:type/:address`,
+      valiadtor_shares: `/:chain/:height/validators`,
+      specific_delegations: `/:chain/:height/delegations/:valoper_address`,
+      user_specific: `/:chain/:height/:type/:address`,
     },
   });
 });
