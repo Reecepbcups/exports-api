@@ -7,29 +7,67 @@ import {
 } from "./helpers";
 import { Request, Response, NextFunction } from "express";
 
+import fs from "fs";
+import path from "path";
+
 const compressedRootPath =
   process.env.COMPRESSED_ROOT_PATH ?? "./export_assets_compressed/";
 const decompressedRootPath =
   process.env.DECOMPRESSED_ROOT_PATH ?? "./export_assets_uncompressed/";
 const COMPRESSED_EXTENSION = ".tar.xz";
 
-const avaliableHeights = (
+let foundChains: string[] = fs.readdirSync(compressedRootPath)
+
+let possibleTypes = JSON.parse(fs.readFileSync(path.join('custom-types.json'), "utf8"));
+
+const availableHeights = (
   req: Request,
   res: Response,
   next: NextFunction,
 ): Response => {
+  if (!foundChains.includes(req.params.chain)) {
+    return res.status(400).json({
+      error: "Invalid chain. Supported: " + foundChains.join(", "),
+    });
+  }
+
   return res.status(200).json({
-    heights: getSortedHeightsList(compressedRootPath),
+    heights: getSortedHeightsList(compressedRootPath, req.params.chain),
   });
 };
 
-const avaliableTypes = (
+const availableTypes = (
   req: Request,
   res: Response,
   next: NextFunction,
 ): Response => {
+  if (!foundChains.includes(req.params.chain)) {
+    return res.status(400).json({
+      error: "Invalid chain. Supported: " + foundChains.join(", "),
+    });
+  }
+
+  if (!Object.keys(possibleTypes).includes(req.params.chain)) {
+    return res.status(400).json({
+      types: Object.keys(TypeToKeyPairs),
+      error: "Invalid chain. Supported: " + Object.keys(possibleTypes).join(", "),
+    });
+  }
+
   return res.status(200).json({
-    types: Object.keys(TypeToKeyPairs),
+    types: possibleTypes[req.params.chain],
+  });
+};
+
+const availableChains = (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Response => {
+  foundChains = fs.readdirSync(compressedRootPath)
+
+  return res.status(200).json({
+    chains: foundChains,
   });
 };
 
@@ -38,22 +76,27 @@ const download = (
   res: Response,
   next: NextFunction,
 ): Response => {
-  let height = validateHeight(compressedRootPath, req.params.height.toString());
-  if (!height) {
+  if (!foundChains.includes(req.params.chain)) {
     return res.status(400).json({
-      error: "Invalid height",
+      error: "Invalid chain. Supported: " + foundChains.join(", "),
     });
   }
-  
-  const fileToDownload = `${compressedRootPath}${height}${COMPRESSED_EXTENSION}`;
-  const customFilename = `${height}${COMPRESSED_EXTENSION}`;  
+
+  let height = validateHeight(compressedRootPath, req.params.chain, req.params.height.toString());
+  if (!height) {
+    return res.status(400).json({
+        error: "Invalid height for chain " + req.params.chain,
+    });
+  }
+
+  const fileToDownload = path.join(compressedRootPath, req.params.chain, `${height}${COMPRESSED_EXTENSION}`);
+  const customFilename = `${height}${COMPRESSED_EXTENSION}`;
 
   const options = {
     headers : {
       'Content-Type': 'application/x-tar',
-    }      
+    }
   }
-
 
   res.download(fileToDownload, customFilename, options);
 
@@ -65,10 +108,16 @@ const getDataAtHeight = (
   res: Response,
   next: NextFunction,
 ): Response => {
-  let height = validateHeight(compressedRootPath, req.params.height.toString());
+  if (!foundChains.includes(req.params.chain)) {
+    return res.status(400).json({
+      error: "Invalid chain. Supported: " + foundChains.join(", "),
+    });
+  }
+
+  let height = validateHeight(compressedRootPath, req.params.chain, req.params.height.toString());
   if (!height) {
     return res.status(400).json({
-      error: "Invalid height",
+        error: "Invalid height for chain " + req.params.chain,
     });
   }
   let type = req.params.type;
@@ -81,11 +130,12 @@ const getDataAtHeight = (
   decompressFile(
     compressedRootPath,
     COMPRESSED_EXTENSION,
+    req.params.chain,
     height,
     decompressedRootPath,
   );
 
-  const data = getDataJSONAtHeight(height, type, decompressedRootPath);
+  const data = getDataJSONAtHeight(req.params.chain, height, type, decompressedRootPath);
   if (data.error) {
     return res.status(400).json({
       error: data.error,
@@ -110,10 +160,16 @@ const getUserAtHeight = (
   res: Response,
   next: NextFunction,
 ): Response => {
-  let height = validateHeight(compressedRootPath, req.params.height.toString());
+  if (!foundChains.includes(req.params.chain)) {
+    return res.status(400).json({
+      error: "Invalid chain. Supported: " + foundChains.join(", "),
+    });
+  }
+
+  let height = validateHeight(compressedRootPath, req.params.chain, req.params.height.toString());
   if (!height) {
     return res.status(400).json({
-      error: "Invalid height",
+      error: "Invalid height for chain " + req.params.chain,
     });
   }
 
@@ -123,16 +179,31 @@ const getUserAtHeight = (
   decompressFile(
     compressedRootPath,
     COMPRESSED_EXTENSION,
+    req.params.chain,
     height,
     decompressedRootPath,
   );
 
-  const data = getDataJSONAtHeight(height, type, decompressedRootPath);
+  const data = getDataJSONAtHeight(req.params.chain, height, type, decompressedRootPath);
+
+  if (TypeToKeyPairs[type] === undefined) {
+    return res.status(400).json({
+      error: "Invalid type. Supported: " + Object.keys(TypeToKeyPairs).join(", "),
+    });
+  }
 
   const parentKey: string = TypeToKeyPairs[type][0];
   const findKey: string = TypeToKeyPairs[type][1];
 
-  const instances = data[parentKey].filter(
+  let a = data[parentKey];
+
+  if (a === undefined) {
+    return res.status(400).json({
+      error: "No data found",
+    });
+  }
+
+  const instances = a.filter(
     (obj: any) => obj[findKey] === address,
   );
 
@@ -155,10 +226,16 @@ const getDelegationsTo = (
   res: Response,
   next: NextFunction,
 ): Response => {
-  let height = validateHeight(compressedRootPath, req.params.height.toString());
+  if (!foundChains.includes(req.params.chain)) {
+    return res.status(400).json({
+      error: "Invalid chain. Supported: " + foundChains.join(", "),
+    });
+  }
+
+  let height = validateHeight(compressedRootPath, req.params.chain, req.params.height.toString());
   if (!height) {
     return res.status(400).json({
-      error: "Invalid height",
+      error: "Invalid height for chain " + req.params.chain,
     });
   }
 
@@ -168,11 +245,12 @@ const getDelegationsTo = (
   decompressFile(
     compressedRootPath,
     COMPRESSED_EXTENSION,
+    req.params.chain,
     height,
     decompressedRootPath,
   );
 
-  const data = getDataJSONAtHeight(height, type, decompressedRootPath);
+  const data = getDataJSONAtHeight(req.params.chain, height, type, decompressedRootPath);
 
   const parentKey: string = TypeToKeyPairs[type][0];
   const instances = data[parentKey].filter(
@@ -198,10 +276,16 @@ const getValidators = (
   res: Response,
   next: NextFunction,
 ): Response => {
-  let height = validateHeight(compressedRootPath, req.params.height.toString());
+  if (!foundChains.includes(req.params.chain)) {
+    return res.status(400).json({
+      error: "Invalid chain. Supported: " + foundChains.join(", "),
+    });
+  }
+
+  let height = validateHeight(compressedRootPath, req.params.chain, req.params.height.toString());
   if (!height) {
     return res.status(400).json({
-      error: "Invalid height",
+      error: "Invalid height for chain " + req.params.chain,
     });
   }
 
@@ -210,16 +294,25 @@ const getValidators = (
   decompressFile(
     compressedRootPath,
     COMPRESSED_EXTENSION,
+    req.params.chain,
     height,
     decompressedRootPath,
   );
 
-  const data = getDataJSONAtHeight(height, type, decompressedRootPath);
+  const data = getDataJSONAtHeight(req.params.chain, height, type, decompressedRootPath);
 
   const parentKey: string = TypeToKeyPairs[type][0];
 
   let validator_delegations: any = {};
-  data[parentKey].forEach((obj: any) => {
+  let v = data[parentKey]
+
+  if (v === undefined) {
+    return res.status(400).json({
+      error: "No validators found",
+    });
+  }
+
+  v.forEach((obj: any) => {
     if (!validator_delegations[obj.validator_address]) {
       validator_delegations[obj.validator_address] = 0;
     }
@@ -253,11 +346,13 @@ const getValidators = (
 };
 
 export default {
-  avaliableTypes,
-  avaliableHeights,
+  availableChains,
+  availableTypes,
+  availableHeights,
   getDataAtHeight,
   getUserAtHeight,
   getDelegationsTo,
   getValidators,
   download,
 };
+
